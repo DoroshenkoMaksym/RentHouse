@@ -1,16 +1,17 @@
 package com.renthouse.olx;
 
-//import org.apache.http.client.methods.CloseableHttpResponse;
-//import org.apache.http.client.methods.HttpGet;
-//import org.apache.http.impl.client.CloseableHttpClient;
-//import org.apache.http.impl.client.HttpClients;
-
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.phantomjs.PhantomJSDriver;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collection;
@@ -20,15 +21,47 @@ import java.util.Set;
 
 public class OlxProcessing {
 
-    public static void main(String[] args) throws IOException {
-        long startTime = System.currentTimeMillis();
-        String OLX = "http://lvov.lv.olx.ua/nedvizhimost/arenda-kvartir/dolgosrochnaya-arenda-kvartir/?page=";
+    private final String OLX_BASE_URL = "http://lvov.lv.olx.ua/nedvizhimost/arenda-kvartir/dolgosrochnaya-arenda-kvartir/?page=";
+    private final String PHANTOMJS_PATH = "/usr/bin/phantomjs";
+    private final int PAGE_COUNT = 2;
+    private WebDriver driver = new PhantomJSDriver();
+    private Actions action = new Actions(driver);
+
+//    public static void main(String[] args) throws IOException {
+//        long startTime = System.currentTimeMillis();
+//        String OLX = "http://lvov.lv.olx.ua/nedvizhimost/arenda-kvartir/dolgosrochnaya-arenda-kvartir/?page=";
+//        OlxProcessing olx = new OlxProcessing();
+//        Set<String> linksSet = olx.getPagesForProcessing(OLX);
+//        olx.writeCollectionToFile(linksSet, "/home/wilson/linksList.txt");
+//        long endTime = System.currentTimeMillis();
+//        System.out.println("Size - " + linksSet.size());
+//        System.out.println("That took " + (endTime - startTime) + " milliseconds");
+//    }
+
+    public static void main(String[] args) throws IOException, InterruptedException {
         OlxProcessing olx = new OlxProcessing();
-        Set<String> linksSet = olx.getPagesForProcessing(OLX);
-        olx.writeCollectionToFile(linksSet, "/home/wilson/linksList.txt");
-        long endTime = System.currentTimeMillis();
-        System.out.println("Size - " + linksSet.size());
-        System.out.println("That took " + (endTime - startTime) + " milliseconds");
+        File file = new File(olx.PHANTOMJS_PATH);
+        System.setProperty("phantomjs.binary.path", file.getAbsolutePath());
+        Set<String> linksSet = olx.getPagesForProcessing(olx.OLX_BASE_URL);
+        olx.processPagesList(linksSet);
+    }
+
+    private void processPagesList(Set<String> pages) throws IOException, InterruptedException {
+        for (String pageUrl : pages) {
+            System.out.println(pageUrl);
+            processPage(pageUrl);
+        }
+    }
+
+    private void processPage(String pageUrl) throws IOException, InterruptedException {
+        driver.get(pageUrl);
+        Boolean isPresent = driver.findElements(By.xpath("//div[@class='clr fleft marginleft15 contactitem brkword']")).size() > 0;
+        if (isPresent) {
+            WebElement element = driver.findElement(By.xpath("//div[@class='clr fleft marginleft15 contactitem brkword']"));
+            action.doubleClick(element).perform();
+            String text = element.getText();
+            System.out.println(text);
+        }
     }
 
     private Set<String> getPagesForProcessing(String siteUrl) throws IOException {
@@ -48,7 +81,7 @@ public class OlxProcessing {
                 }
             }
             pageNumber++;
-        } while (pageNumber != 346);
+        } while (pageNumber != PAGE_COUNT);
         return pagesForProcessing;
     }
 
@@ -60,13 +93,5 @@ public class OlxProcessing {
         }
         out.close();
     }
-
-//    private int getURLStatus(String url) throws IOException {
-//        CloseableHttpClient httpClient = HttpClients.createDefault();
-//        HttpGet httpGet = new HttpGet(url);
-//        CloseableHttpResponse response = httpClient.execute(httpGet);
-//        int code = response.getStatusLine().getStatusCode();
-//        return code;
-//    }
 
 }
